@@ -1,0 +1,76 @@
+<main class="container mx-auto px-6 pt-28 pb-16">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    <div>
+      <h1 class="text-4xl font-bold mb-4">Mulai Mencipta Gambar AI</h1>
+      <p class="mb-6 text-slate-400">1x Gratis per bulan, sisanya Rp 2.000/gambar</p>
+
+      <form id="generate-form" class="space-y-4">
+        <textarea id="prompt" name="prompt" rows="3" placeholder="Deskripsi gambar..." class="w-full border rounded p-3"></textarea>
+
+        <label class="inline-flex items-center space-x-2 text-sm text-slate-500">
+          <input type="checkbox" id="free_trial" name="free_trial" value="1" class="form-checkbox text-indigo-600" checked>
+          <span>Gunakan Free Trial (1x/bulan)</span>
+        </label>
+
+        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded hover:bg-indigo-700">🎁 Generate</button>
+      </form>
+
+      <div id="toast" class="hidden mt-4 px-4 py-2 rounded bg-slate-800 text-white font-medium"></div>
+    </div>
+
+    <div>
+      <h2 class="text-xl font-semibold mb-2">Preview Gambar</h2>
+      <div id="preview-area" class="border border-dashed h-80 rounded flex items-center justify-center bg-slate-100">
+        <p class="text-slate-500">Belum ada gambar</p>
+        <img id="preview-image" class="hidden object-cover w-full h-full rounded" />
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+document.getElementById("generate-form").addEventListener("submit", async function(e) {
+  e.preventDefault()
+
+  const prompt = document.getElementById("prompt").value
+  const freeTrial = document.getElementById("free_trial").checked ? "1" : "0"
+  const btn = e.target.querySelector("button")
+  const toast = document.getElementById("toast")
+  const previewImage = document.getElementById("preview-image")
+
+  btn.disabled = true
+  btn.textContent = "Memproses..."
+
+  const res = await fetch("/generate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": document.querySelector("[name='csrf-token']").content
+    },
+    body: JSON.stringify({ prompt, free_trial: freeTrial })
+  })
+
+  const json = await res.json()
+
+  if (json.error) {
+    toast.textContent = json.error
+    toast.classList.remove("hidden")
+    toast.classList.add("bg-red-500")
+  } else if (json.url) {
+    previewImage.src = json.url
+    previewImage.classList.remove("hidden")
+    toast.textContent = "Gambar berhasil dibuat!"
+    toast.classList.remove("hidden", "bg-red-500")
+    toast.classList.add("bg-green-600")
+  } else if (json.snap_token) {
+    window.snap.pay(json.snap_token, {
+      onSuccess: function() {
+        alert("Pembayaran sukses, gambar akan segera diproses.")
+      }
+    })
+  }
+
+  btn.disabled = false
+  btn.textContent = "🎁 Generate"
+})
+</script>
